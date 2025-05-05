@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Plant NFT Analyzer</title>
+  <style>
+    body { font-family: sans-serif; margin: 2rem; max-width: 700px; }
+    h1 { color: #2b7a78; }
+    ul { padding-left: 1.5rem; }
+    #support {
+      margin-top: 3em;
+      padding: 1em;
+      border-top: 1px solid #ccc;
+      font-size: 0.95em;
+      color: #444;
+    }
+    #support strong { color: #000; }
+    #instructions {
+      background: #eef9f5;
+      border-left: 4px solid #2b7a78;
+      padding: 1em;
+      margin-bottom: 2em;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🌱 Plant NFT Analyzer</h1>
+
+  <div id="instructions">
+    <p><strong>How to use this tool:</strong></p>
+    <ol>
+      <li>Go to <a href="https://pvr.ronencoin.tech/reveal" target="_blank">https://pvr.ronencoin.tech/reveal</a></li>
+      <li>Once your NFTs are revealed, right-click on the page and choose <strong>"Save As..."</strong></li>
+      <li>Save it as <strong>Web Page, Complete</strong> or <strong>HTML only</strong></li>
+      <li>Come back to this page and upload the saved HTML file below 👇</li>
+    </ol>
+  </div>
+
+  <input type="file" id="fileInput" accept=".html,.htm">
+  <div id="output"></div>
+
+  <div id="support">
+    ✨ If you like this tool, please support me via Ronin wallet:<br>
+    <strong>0x9e4AdB18870f5789F610BD66d520ad2cD175083b</strong><br>
+    🙏 Thanks!
+  </div>
+
+  <script>
+    const buckets = [24, 48, 72, 96, 120];
+    const rarityOrder = ['Common', 'Rare', 'Epic', 'Legendary'];
+
+    document.getElementById("fileInput").addEventListener("change", function (event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function () {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(reader.result, "text/html");
+
+        const cards = doc.querySelectorAll("#revealed-nfts .nft-card");
+        const intervalTotals = Object.fromEntries(buckets.map(h => [h, 0]));
+        const rarityStats = {};
+        let totalPerHour = 0;
+
+        cards.forEach(card => {
+          const ps = card.querySelectorAll("p");
+          if (ps.length < 2) return;
+
+          const rarity = ps[0].textContent.trim();
+          const earningsText = ps[1].textContent.trim();
+          const match = earningsText.match(/([\d,]+\.\d+)\s*PVR\s*\/\s*(\d+)\s*hrs/i);
+          if (!match) return;
+
+          const pvrTotal = parseFloat(match[1].replace(/,/g, ""));
+          const hours = parseFloat(match[2]);
+          const pvrPerHour = pvrTotal / hours;
+          totalPerHour += pvrPerHour;
+
+          buckets.forEach(h => {
+            intervalTotals[h] += pvrPerHour * h;
+          });
+
+          if (!rarityStats[rarity]) rarityStats[rarity] = { total: 0, count: 0 };
+          rarityStats[rarity].total += pvrPerHour;
+          rarityStats[rarity].count += 1;
+        });
+
+        // Display
+        let out = `<h2>Estimated $PVR Harvest for Intervals:</h2><ul>`;
+        buckets.forEach(h => {
+          out += `<li><strong>${h} hours</strong>: ${intervalTotals[h].toFixed(2)} PVR</li>`;
+        });
+        out += `</ul>`;
+
+        out += `<p><strong>Total per hour:</strong> ${totalPerHour.toFixed(2)} PVR</p>`;
+
+        out += `<h2>Average $PVR per hour by Rarity:</h2><ul>`;
+        rarityOrder.forEach(rarity => {
+          if (rarityStats[rarity]) {
+            const avg = rarityStats[rarity].total / rarityStats[rarity].count;
+            out += `<li><strong>${rarity}</strong>: ${avg.toFixed(2)} PVR/hr over ${rarityStats[rarity].count} plants</li>`;
+          } else {
+            out += `<li><strong>${rarity}</strong>: 0.00 PVR/hr over 0 plants</li>`;
+          }
+        });
+        out += `</ul>`;
+
+        document.getElementById("output").innerHTML = out;
+      };
+
+      reader.readAsText(file);
+    });
+  </script>
+
+</body>
+</html>
