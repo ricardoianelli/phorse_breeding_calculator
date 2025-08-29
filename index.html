@@ -1,118 +1,404 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Plant NFT Analyzer</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Planet Horse – Breeding Cost & Odds Calculator</title>
   <style>
-    body { font-family: sans-serif; margin: 2rem; max-width: 700px; }
-    h1 { color: #2b7a78; }
-    ul { padding-left: 1.5rem; }
-    #support {
-      margin-top: 3em;
-      padding: 1em;
-      border-top: 1px solid #ccc;
-      font-size: 0.95em;
-      color: #444;
+    :root {
+      --bg: #0b0f16;
+      --panel: #121826;
+      --muted: #9aa4b2;
+      --text: #e6edf5;
+      --accent: #6ee7b7;
+      --danger: #ff6b6b;
+      --warn: #f59e0b;
+      --link: #93c5fd;
     }
-    #support strong { color: #000; }
-    #instructions {
-      background: #eef9f5;
-      border-left: 4px solid #2b7a78;
-      padding: 1em;
-      margin-bottom: 2em;
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background: linear-gradient(180deg, #0b0f16, #0d1422 35%, #0b0f16 100%);
+      color: var(--text);
+    }
+    header { padding: 28px 16px; text-align: center; }
+    header h1 { margin: 0 0 6px; font-size: clamp(22px, 3vw, 30px); letter-spacing: .2px; }
+    header p { margin: 0; color: var(--muted); font-size: 14px; }
+
+    main { max-width: 980px; margin: 0 auto; padding: 16px; display: grid; gap: 16px; }
+    .card { background: rgba(18,24,38,.9); border: 1px solid rgba(255,255,255,.06); border-radius: 14px; padding: 16px; box-shadow: 0 6px 24px rgba(0,0,0,.25); }
+    .stack { display: grid; gap: 12px; }
+    .grid { display: grid; gap: 12px; grid-template-columns: repeat(12, 1fr); }
+    .col-6 { grid-column: span 6; }
+    .col-4 { grid-column: span 4; }
+    .col-8 { grid-column: span 8; }
+    .col-12 { grid-column: span 12; }
+
+    label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    select, input[type="number"], input[type="text"] {
+      width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,.08);
+      background: #0f1523; color: var(--text); outline: none;
+    }
+    input[type="number"]::-webkit-outer-spin-button, input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,.08);
+      background: #10182a; color: var(--text); cursor: pointer; user-select: none; font-weight: 600; font-size: 14px;
+    }
+    .btn:hover { filter: brightness(1.1); }
+    .btn.primary { background: #132a22; border-color: rgba(110,231,183,.3); color: var(--accent); }
+    .btn.ghost { background: transparent; }
+    .note { color: var(--muted); font-size: 13px; }
+    .tag { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 4px 8px; border-radius: 999px; background: #0f1626; border: 1px solid rgba(255,255,255,.08); color: var(--muted); }
+
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 10px 8px; text-align: left; border-bottom: 1px solid rgba(255,255,255,.06); }
+    th { color: var(--muted); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; }
+
+    .stat {
+      display: grid; gap: 2px; padding: 8px 10px; border-radius: 10px; background: #0f1523; border: 1px solid rgba(255,255,255,.06);
+    }
+    .stat .label { color: var(--muted); font-size: 12px; }
+    .stat .value { font-size: 20px; font-weight: 700; }
+    .value .sub { font-size: 12px; color: var(--muted); font-weight: 500; margin-left: 6px; }
+
+    a { color: var(--link); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    footer { text-align: center; color: var(--muted); font-size: 12px; padding: 24px; }
+
+    @media (max-width: 820px) {
+      .col-6, .col-4, .col-8 { grid-column: span 12; }
     }
   </style>
 </head>
 <body>
+  <header>
+    <h1>Planet Horse – Breeding Calculator</h1>
+    <p>Compute $PHORSE and $RON costs and see rarity odds based on <em>Origin Horses</em> breeding rules.</p>
+  </header>
 
-  <h1>🌱 Plant NFT Analyzer</h1>
+  <main>
+    <!-- Inputs -->
+    <section class="card stack" id="inputs">
+      <div class="grid">
+        <div class="col-6">
+          <label>Parent A Rarity</label>
+          <select id="rarityA"></select>
+        </div>
+        <div class="col-6">
+          <label>Parent B Rarity</label>
+          <select id="rarityB"></select>
+        </div>
+        <div class="col-6">
+          <label>Parent A Current Breed Count</label>
+          <input id="breedsA" type="number" min="0" step="1" value="0" />
+        </div>
+        <div class="col-6">
+          <label>Parent B Current Breed Count</label>
+          <input id="breedsB" type="number" min="0" step="1" value="0" />
+        </div>
+      </div>
 
-  <div id="instructions">
-    <p><strong>How to use this tool:</strong></p>
-    <ol>
-      <li>Go to <a href="https://pvr.ronencoin.tech/reveal" target="_blank">https://pvr.ronencoin.tech/reveal</a></li>
-      <li>Once your NFTs are revealed, right-click on the page and choose <strong>"Save As..."</strong></li>
-      <li>Save it as <strong>Web Page, Complete</strong> or <strong>HTML only</strong></li>
-      <li>Come back to this page and upload the saved HTML file below 👇</li>
-    </ol>
-  </div>
+      <div class="grid">
+        <div class="col-8">
+          <label>$PHORSE USD Price <span class="tag" id="priceStatus">loading…</span></label>
+          <input id="usdPrice" type="text" inputmode="decimal" placeholder="e.g. 0.0015" />
+          <div class="row">
+            <button class="btn" id="fetchBtn">↻ Refresh from Ronin DEX (DexScreener)</button>
+            <button class="btn ghost" id="useManualBtn">Use manual entry</button>
+            <span class="note" id="priceSource"></span>
+          </div>
+        </div>
+        <div class="col-4">
+          <label>&nbsp;</label>
+          <button class="btn primary" id="calcBtn">Calculate</button>
+        </div>
+      </div>
 
-  <input type="file" id="fileInput" accept=".html,.htm">
-  <div id="output"></div>
+      <p class="note">Rules used: Base USD cost depends on the <strong>lower rarity</strong> parent. The breeding tax uses the <strong>higher breed count</strong> across the two parents. Formulas from Planet Horse docs.
+      </p>
+    </section>
 
-  <div id="support">
-    ✨ If you like this tool, please support me via Ronin wallet:<br>
-    <strong>0x9e4AdB18870f5789F610BD66d520ad2cD175083b</strong><br>
-    🙏 Thanks!
-  </div>
+    <!-- Results -->
+    <section class="card stack" id="results">
+      <div class="grid">
+        <div class="col-4">
+          <div class="stat">
+            <div class="label">Lower Rarity Parent</div>
+            <div class="value" id="lowerRarity">–</div>
+          </div>
+        </div>
+        <div class="col-4">
+          <div class="stat">
+            <div class="label">Max Current Breeds (tax basis)</div>
+            <div class="value" id="maxBreeds">–</div>
+          </div>
+        </div>
+        <div class="col-4">
+          <div class="stat">
+            <div class="label">Base USD + Modifier</div>
+            <div class="value" id="baseUsd">–</div>
+          </div>
+        </div>
+
+        <div class="col-6">
+          <div class="stat">
+            <div class="label">PHORSE Required</div>
+            <div class="value" id="phorseOut">– <span class="sub" id="phorseHint"></span></div>
+          </div>
+        </div>
+        <div class="col-6">
+          <div class="stat">
+            <div class="label">RON Required</div>
+            <div class="value" id="ronOut">–</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="stack">
+        <h3 style="margin:10px 0 0; font-size:18px;">Offspring Rarity Odds</h3>
+        <p class="note" id="oddsCaption">Odds depend on the <em>lower rarity</em> parent.</p>
+        <table>
+          <thead>
+            <tr>
+              <th>Tier</th>
+              <th>Chance</th>
+            </tr>
+          </thead>
+          <tbody id="oddsBody"></tbody>
+        </table>
+      </div>
+
+      <div class="row">
+        <button class="btn ghost" id="shareBtn">Copy Shareable Link</button>
+        <span class="note" id="shareNote"></span>
+      </div>
+    </section>
+
+    <section class="card stack">
+      <details>
+        <summary style="cursor:pointer; font-weight:600;">How calculations work</summary>
+        <div class="stack" style="margin-top:10px;">
+          <div class="note">
+            <div><strong>Base USD by Rarity</strong>: Common $10, Uncommon $15, Rare $20, Epic $25, Legendary $30, Mythic $40.</div>
+            <div><strong>PHORSE</strong> = ((baseUsd + (maxCurrentBreeds × 5)) ÷ usdPrice) + (maxCurrentBreeds × usdPrice)</div>
+            <div><strong>RON</strong> = (maxCurrentBreeds + 1) × 1.8</div>
+            <div>Offspring odds tables are taken from the Planet Horse docs for each rarity tier.</div>
+          </div>
+        </div>
+      </details>
+      <p class="note">Tip: If the live $PHORSE fetch fails (CORS/rate limits), click “Use manual entry” and type the price.
+      </p>
+    </section>
+  </main>
+
+  <footer>
+    <div>Unofficial fan tool. Always double‑check in‑game before confirming a breed.</div>
+    <div>Help me buy more horses, donate anything to 0x9e4AdB18870f5789F610BD66d520ad2cD175083b <3</div>
+  </footer>
 
   <script>
-    const buckets = [24, 48, 72, 96, 120];
-    const rarityOrder = ['Common', 'Rare', 'Epic', 'Legendary'];
+    // ---- Constants from the official docs ----
+    const RARITIES = ["Common","Uncommon","Rare","Epic","Legendary","Mythic"]; // ascending order
+    const BASE_USD = { Common:10, Uncommon:15, Rare:20, Epic:25, Legendary:30, Mythic:40 };
+    const CHANCES = {
+      Common:    [73, 21, 5, 1, 0, 0],
+      Uncommon:  [30, 55, 13, 2, 0, 0],
+      Rare:      [5, 15, 65, 12, 3, 0],
+      Epic:      [0, 4, 25, 63, 6, 2],
+      Legendary: [0, 1, 6, 30, 56, 7],
+      Mythic:    [0, 0, 1, 8, 30, 61]
+    };
 
-    document.getElementById("fileInput").addEventListener("change", function (event) {
-      const file = event.target.files[0];
-      if (!file) return;
+    // PHORSE on Ronin (from planethorse.io)
+    const PHORSE_TOKEN = "0x6ad39689cac97a3e647fabd31534555bc7edd5c6";
 
-      const reader = new FileReader();
-      reader.onload = function () {
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(reader.result, "text/html");
+    // Elements
+    const rarityA = document.getElementById('rarityA');
+    const rarityB = document.getElementById('rarityB');
+    const breedsA = document.getElementById('breedsA');
+    const breedsB = document.getElementById('breedsB');
+    const usdPrice = document.getElementById('usdPrice');
+    const priceStatus = document.getElementById('priceStatus');
+    const priceSource = document.getElementById('priceSource');
+    const fetchBtn = document.getElementById('fetchBtn');
+    const useManualBtn = document.getElementById('useManualBtn');
+    const calcBtn = document.getElementById('calcBtn');
 
-        const cards = doc.querySelectorAll("#revealed-nfts .nft-card");
-        const intervalTotals = Object.fromEntries(buckets.map(h => [h, 0]));
-        const rarityStats = {};
-        let totalPerHour = 0;
+    const lowerRarityEl = document.getElementById('lowerRarity');
+    const maxBreedsEl = document.getElementById('maxBreeds');
+    const baseUsdEl = document.getElementById('baseUsd');
+    const phorseOut = document.getElementById('phorseOut');
+    const phorseHint = document.getElementById('phorseHint');
+    const ronOut = document.getElementById('ronOut');
+    const oddsBody = document.getElementById('oddsBody');
 
-        cards.forEach(card => {
-          const ps = card.querySelectorAll("p");
-          if (ps.length < 2) return;
+    const shareBtn = document.getElementById('shareBtn');
+    const shareNote = document.getElementById('shareNote');
 
-          const rarity = ps[0].textContent.trim();
-          const earningsText = ps[1].textContent.trim();
-          const match = earningsText.match(/([\d,]+\.\d+)\s*PVR\s*\/\s*(\d+)\s*hrs/i);
-          if (!match) return;
+    // Fill rarity selects
+    function fillRarity(select) {
+      RARITIES.forEach(r => {
+        const opt = document.createElement('option');
+        opt.value = r; opt.textContent = r; select.appendChild(opt);
+      });
+    }
+    fillRarity(rarityA); fillRarity(rarityB);
+    rarityA.value = 'Rare'; rarityB.value = 'Rare';
 
-          const pvrTotal = parseFloat(match[1].replace(/,/g, ""));
-          const hours = parseFloat(match[2]);
-          const pvrPerHour = pvrTotal / hours;
-          totalPerHour += pvrPerHour;
+    // Helpers
+    const fmtInt = (n) => new Intl.NumberFormat().format(Math.round(n));
+    const fmtUsd = (n) => `$${n.toFixed(2)}`;
+    const clampInt = (v) => Math.max(0, Math.floor(Number(v||0)));
 
-          buckets.forEach(h => {
-            intervalTotals[h] += pvrPerHour * h;
-          });
+    function lowerRarity(a,b){
+      return RARITIES[Math.min(RARITIES.indexOf(a), RARITIES.indexOf(b))];
+    }
 
-          if (!rarityStats[rarity]) rarityStats[rarity] = { total: 0, count: 0 };
-          rarityStats[rarity].total += pvrPerHour;
-          rarityStats[rarity].count += 1;
-        });
+    function updateOddsTable(lr){
+      const tiers = RARITIES;
+      const dist = CHANCES[lr];
+      oddsBody.innerHTML = '';
+      tiers.forEach((t, i) => {
+        const tr = document.createElement('tr');
+        const td1 = document.createElement('td'); td1.textContent = t; tr.appendChild(td1);
+        const td2 = document.createElement('td'); td2.textContent = dist[i] + '%'; tr.appendChild(td2);
+        oddsBody.appendChild(tr);
+      });
+      document.getElementById('oddsCaption').textContent = `Odds depend on the lower rarity parent (currently: ${lr}).`;
+    }
 
-        // Display
-        let out = `<h2>Estimated $PVR Harvest for Intervals:</h2><ul>`;
-        buckets.forEach(h => {
-          out += `<li><strong>${h} hours</strong>: ${intervalTotals[h].toFixed(2)} PVR</li>`;
-        });
-        out += `</ul>`;
+    function compute(){
+      const rA = rarityA.value; const rB = rarityB.value;
+      const bA = clampInt(breedsA.value); const bB = clampInt(breedsB.value);
+      breedsA.value = bA; breedsB.value = bB;
 
-        out += `<p><strong>Total per hour:</strong> ${totalPerHour.toFixed(2)} PVR</p>`;
+      const lr = lowerRarity(rA, rB);
+      const m = Math.max(bA, bB);
+      const base = BASE_USD[lr] + (m * 5);
 
-        out += `<h2>Average $PVR per hour by Rarity:</h2><ul>`;
-        rarityOrder.forEach(rarity => {
-          if (rarityStats[rarity]) {
-            const avg = rarityStats[rarity].total / rarityStats[rarity].count;
-            out += `<li><strong>${rarity}</strong>: ${avg.toFixed(2)} PVR/hr over ${rarityStats[rarity].count} plants</li>`;
-          } else {
-            out += `<li><strong>${rarity}</strong>: 0.00 PVR/hr over 0 plants</li>`;
-          }
-        });
-        out += `</ul>`;
+      lowerRarityEl.textContent = lr;
+      maxBreedsEl.textContent = m.toString();
+      baseUsdEl.textContent = fmtUsd(base);
 
-        document.getElementById("output").innerHTML = out;
-      };
+      const price = Number(String(usdPrice.value).replace(/,/g,''));
+      if (!price || price <= 0){
+        phorseOut.textContent = '–';
+        phorseHint.textContent = '';
+      } else {
+        // Formula from docs: PHORSE = ((baseUsd + (m × 5)) ÷ usdPrice) + (m × usdPrice)
+        const phorse = ((base) / price) + (m * price);
+        phorseOut.innerHTML = `${fmtInt(phorse)} <span class="sub">at $${price.toFixed(6)} / PHORSE</span>`;
+        phorseHint.textContent = '';
+      }
 
-      reader.readAsText(file);
-    });
+      // RON = (m + 1) * 1.8
+      const ron = (m + 1) * 1.8;
+      ronOut.textContent = `${ron.toFixed(1)} RON`;
+
+      updateOddsTable(lr);
+      pushStateToUrl();
+    }
+
+    // Fetch PHORSE price from DexScreener (select the pool with the highest USD liquidity)
+    async function fetchPrice(){
+      priceStatus.textContent = 'fetching…';
+      priceStatus.style.color = '';
+      priceSource.textContent = '';
+      try {
+        const url = `https://api.dexscreener.com/token-pairs/v1/ronin/${PHORSE_TOKEN}`;
+        const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (!Array.isArray(data) || data.length === 0) throw new Error('No pools');
+
+        // Choose the pool with greatest liquidity.usd and a valid priceUsd
+        const best = data
+          .filter(p => p && p.priceUsd && p.liquidity && typeof p.liquidity.usd === 'number')
+          .sort((a,b) => (b.liquidity.usd||0) - (a.liquidity.usd||0))[0];
+        if (!best) throw new Error('No priced pools');
+
+        const price = Number(best.priceUsd);
+        if (!price || !isFinite(price)) throw new Error('Bad price');
+        usdPrice.value = price.toFixed(6);
+        priceStatus.textContent = 'live';
+        priceStatus.style.color = 'var(--accent)';
+        priceSource.innerHTML = `Source: <a href="${best.url}" target="_blank" rel="noopener">DexScreener (largest-liquidity pool)</a>`;
+        localStorage.setItem('phorse_usd_auto', String(price));
+        compute();
+      } catch (err){
+        priceStatus.textContent = 'manual';
+        priceStatus.style.color = 'var(--warn)';
+        priceSource.textContent = 'Could not fetch price. Enter manually.';
+      }
+    }
+
+    function useManual(){
+      priceStatus.textContent = 'manual';
+      priceStatus.style.color = 'var(--warn)';
+      priceSource.textContent = 'Manual input enabled';
+      usdPrice.focus();
+    }
+
+    // Shareable state via query params
+    function pushStateToUrl(){
+      const params = new URLSearchParams();
+      params.set('ra', rarityA.value);
+      params.set('rb', rarityB.value);
+      params.set('ba', clampInt(breedsA.value));
+      params.set('bb', clampInt(breedsB.value));
+      const up = Number(String(usdPrice.value).replace(/,/g,''));
+      if (up > 0) params.set('p', String(up));
+      const url = `${location.pathname}?${params.toString()}`;
+      history.replaceState({}, '', url);
+    }
+
+    function loadFromUrl(){
+      const q = new URLSearchParams(location.search);
+      const ra = q.get('ra'); const rb = q.get('rb');
+      const ba = q.get('ba'); const bb = q.get('bb');
+      const p = q.get('p');
+      if (RARITIES.includes(ra)) rarityA.value = ra;
+      if (RARITIES.includes(rb)) rarityB.value = rb;
+      if (ba !== null) breedsA.value = clampInt(ba);
+      if (bb !== null) breedsB.value = clampInt(bb);
+      if (p !== null && Number(p) > 0) {
+        usdPrice.value = Number(p).toFixed(6);
+        priceStatus.textContent = 'manual';
+        priceStatus.style.color = 'var(--warn)';
+        priceSource.textContent = 'Loaded price from URL';
+      }
+    }
+
+    function copyShare(){
+      try {
+        navigator.clipboard.writeText(location.href);
+        shareNote.textContent = 'Link copied!';
+        setTimeout(() => shareNote.textContent = '', 2000);
+      } catch (_) {
+        shareNote.textContent = 'Copy failed—select the URL bar and copy manually.';
+      }
+    }
+
+    // Wire up
+    fetchBtn.addEventListener('click', fetchPrice);
+    useManualBtn.addEventListener('click', useManual);
+    calcBtn.addEventListener('click', compute);
+    [rarityA,rarityB,breedsA,breedsB,usdPrice].forEach(el => el.addEventListener('input', compute));
+    shareBtn.addEventListener('click', copyShare);
+
+    // Init
+    loadFromUrl();
+    const cached = Number(localStorage.getItem('phorse_usd_auto'));
+    if (cached > 0 && !usdPrice.value) {
+      usdPrice.value = cached.toFixed(6);
+      priceStatus.textContent = 'cached';
+      priceStatus.style.color = 'var(--muted)';
+      priceSource.textContent = 'Using last fetched price (browser cache).';
+    }
+    // Try live fetch
+    fetchPrice().finally(compute);
   </script>
-
 </body>
 </html>
