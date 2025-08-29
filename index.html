@@ -102,13 +102,9 @@
 
       <div class="grid">
         <div class="col-8">
-          <label>$PHORSE USD Price <span class="tag" id="priceStatus">loading…</span></label>
+          <label>$PHORSE USD Price <span class="tag">manual input</span></label>
           <input id="usdPrice" type="text" inputmode="decimal" placeholder="e.g. 0.0015" />
-          <div class="row">
-            <button class="btn" id="fetchBtn">↻ Refresh from Ronin DEX (DexScreener)</button>
-            <button class="btn ghost" id="useManualBtn">Use manual entry</button>
-            <span class="note" id="priceSource"></span>
-          </div>
+          <div class="note">Live fetch disabled by request.</div>
         </div>
         <div class="col-4">
           <label>&nbsp;</label>
@@ -116,7 +112,7 @@
         </div>
       </div>
 
-      <p class="note">Rules used: Base USD cost depends on the <strong>lower rarity</strong> parent. The breeding tax uses the <strong>higher breed count</strong> across the two parents. Formulas from Planet Horse docs.
+      <p class="note">Rules used: Base USD cost depends on the <strong>higher rarity</strong> parent. Offspring odds depend on the <strong>lower rarity</strong> parent. The breeding tax uses the <strong>higher breed count</strong> across the two parents. Formulas from Planet Horse docs.
       </p>
     </section>
 
@@ -125,7 +121,7 @@
       <div class="grid">
         <div class="col-4">
           <div class="stat">
-            <div class="label">Lower Rarity Parent</div>
+            $1Lower (odds) / Higher (cost)$2
             <div class="value" id="lowerRarity">–</div>
           </div>
         </div>
@@ -212,18 +208,13 @@
     };
 
     // PHORSE on Ronin (from planethorse.io)
-    const PHORSE_TOKEN = "0x6ad39689cac97a3e647fabd31534555bc7edd5c6";
-
+    
     // Elements
     const rarityA = document.getElementById('rarityA');
     const rarityB = document.getElementById('rarityB');
     const breedsA = document.getElementById('breedsA');
     const breedsB = document.getElementById('breedsB');
     const usdPrice = document.getElementById('usdPrice');
-    const priceStatus = document.getElementById('priceStatus');
-    const priceSource = document.getElementById('priceSource');
-    const fetchBtn = document.getElementById('fetchBtn');
-    const useManualBtn = document.getElementById('useManualBtn');
     const calcBtn = document.getElementById('calcBtn');
 
     const lowerRarityEl = document.getElementById('lowerRarity');
@@ -255,6 +246,9 @@
     function lowerRarity(a,b){
       return RARITIES[Math.min(RARITIES.indexOf(a), RARITIES.indexOf(b))];
     }
+    function higherRarity(a,b){
+      return RARITIES[Math.max(RARITIES.indexOf(a), RARITIES.indexOf(b))];
+    }
 
     function updateOddsTable(lr){
       const tiers = RARITIES;
@@ -275,10 +269,11 @@
       breedsA.value = bA; breedsB.value = bB;
 
       const lr = lowerRarity(rA, rB);
+      const hr = higherRarity(rA, rB);
       const m = Math.max(bA, bB);
-      const base = BASE_USD[lr] + (m * 5);
+      const base = BASE_USD[hr] + (m * 5);
 
-      lowerRarityEl.textContent = lr;
+      lowerRarityEl.textContent = `${lr} / ${hr}`;
       maxBreedsEl.textContent = m.toString();
       baseUsdEl.textContent = fmtUsd(base);
 
@@ -302,45 +297,9 @@
     }
 
     // Fetch PHORSE price from DexScreener (select the pool with the highest USD liquidity)
-    async function fetchPrice(){
-      priceStatus.textContent = 'fetching…';
-      priceStatus.style.color = '';
-      priceSource.textContent = '';
-      try {
-        const url = `https://api.dexscreener.com/token-pairs/v1/ronin/${PHORSE_TOKEN}`;
-        const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-        if (!Array.isArray(data) || data.length === 0) throw new Error('No pools');
+        }
 
-        // Choose the pool with greatest liquidity.usd and a valid priceUsd
-        const best = data
-          .filter(p => p && p.priceUsd && p.liquidity && typeof p.liquidity.usd === 'number')
-          .sort((a,b) => (b.liquidity.usd||0) - (a.liquidity.usd||0))[0];
-        if (!best) throw new Error('No priced pools');
-
-        const price = Number(best.priceUsd);
-        if (!price || !isFinite(price)) throw new Error('Bad price');
-        usdPrice.value = price.toFixed(6);
-        priceStatus.textContent = 'live';
-        priceStatus.style.color = 'var(--accent)';
-        priceSource.innerHTML = `Source: <a href="${best.url}" target="_blank" rel="noopener">DexScreener (largest-liquidity pool)</a>`;
-        localStorage.setItem('phorse_usd_auto', String(price));
-        compute();
-      } catch (err){
-        priceStatus.textContent = 'manual';
-        priceStatus.style.color = 'var(--warn)';
-        priceSource.textContent = 'Could not fetch price. Enter manually.';
-      }
-    }
-
-    function useManual(){
-      priceStatus.textContent = 'manual';
-      priceStatus.style.color = 'var(--warn)';
-      priceSource.textContent = 'Manual input enabled';
-      usdPrice.focus();
-    }
-
+    
     // Shareable state via query params
     function pushStateToUrl(){
       const params = new URLSearchParams();
@@ -382,23 +341,13 @@
     }
 
     // Wire up
-    fetchBtn.addEventListener('click', fetchPrice);
-    useManualBtn.addEventListener('click', useManual);
-    calcBtn.addEventListener('click', compute);
+            calcBtn.addEventListener('click', compute);
     [rarityA,rarityB,breedsA,breedsB,usdPrice].forEach(el => el.addEventListener('input', compute));
     shareBtn.addEventListener('click', copyShare);
 
     // Init
     loadFromUrl();
-    const cached = Number(localStorage.getItem('phorse_usd_auto'));
-    if (cached > 0 && !usdPrice.value) {
-      usdPrice.value = cached.toFixed(6);
-      priceStatus.textContent = 'cached';
-      priceStatus.style.color = 'var(--muted)';
-      priceSource.textContent = 'Using last fetched price (browser cache).';
-    }
-    // Try live fetch
-    fetchPrice().finally(compute);
+    compute();
   </script>
 </body>
 </html>
