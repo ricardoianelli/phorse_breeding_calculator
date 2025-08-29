@@ -121,12 +121,6 @@
       <div class="grid">
         <div class="col-4">
           <div class="stat">
-            $1Lower (odds) / Higher (cost)$2
-            <div class="value" id="lowerRarity">–</div>
-          </div>
-        </div>
-        <div class="col-4">
-          <div class="stat">
             <div class="label">Max Current Breeds (tax basis)</div>
             <div class="value" id="maxBreeds">–</div>
           </div>
@@ -217,7 +211,6 @@
     const usdPrice = document.getElementById('usdPrice');
     const calcBtn = document.getElementById('calcBtn');
 
-    const lowerRarityEl = document.getElementById('lowerRarity');
     const maxBreedsEl = document.getElementById('maxBreeds');
     const baseUsdEl = document.getElementById('baseUsd');
     const phorseOut = document.getElementById('phorseOut');
@@ -273,7 +266,6 @@
       const m = Math.max(bA, bB);
       const base = BASE_USD[hr] + (m * 5);
 
-      lowerRarityEl.textContent = `${lr} / ${hr}`;
       maxBreedsEl.textContent = m.toString();
       baseUsdEl.textContent = fmtUsd(base);
 
@@ -295,9 +287,6 @@
       updateOddsTable(lr);
       pushStateToUrl();
     }
-
-    // Fetch PHORSE price from DexScreener (select the pool with the highest USD liquidity)
-        }
 
     
     // Shareable state via query params
